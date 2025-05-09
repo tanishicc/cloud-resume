@@ -1,0 +1,55 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Cloud Resume Visitor Counter using SAM
+
+Globals:
+  Function:
+    Timeout: 10
+    Runtime: python3.12
+
+Resources:
+
+  # API Gateway
+  MyApi:
+    Type: AWS::Serverless::Api
+    Properties:
+      Name: VisitorApi
+      StageName: Prod
+
+  # Lambda Function
+  VisitorCounterFunction:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: hello_world/
+      Handler: app.lambda_handler
+      Runtime: python3.12
+      Environment:
+        Variables:
+          TABLE_NAME: !Ref VisitorTable
+      Policies:
+        - DynamoDBCrudPolicy:
+            TableName: !Ref VisitorTable
+      Events:
+        VisitorApi:
+          Type: Api
+          Properties:
+            Path: /counter
+            Method: get
+            RestApiId: !Ref MyApi
+
+  # DynamoDB Table
+  VisitorTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: id
+          AttributeType: S
+      KeySchema:
+        - AttributeName: id
+          KeyType: HASH
+
+Outputs:
+  VisitorApi:
+    Description: "API Gateway endpoint URL for visitor counter"
+    Value: !Sub "https://${MyApi}.execute-api.${AWS::Region}.amazonaws.com/Prod/counter"
